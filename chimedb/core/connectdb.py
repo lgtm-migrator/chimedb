@@ -364,6 +364,8 @@ class MySQLConnector(BaseConnector):
         tunnel_user=None,
         tunnel_identity=None,
     ):
+        self._database = None
+
         self._db = db
         self._user = user
         self._passwd = passwd
@@ -387,6 +389,8 @@ class MySQLConnector(BaseConnector):
                 connect_timeout=1,
             )
         except MySQLdb.OperationalError as e:
+            if self._tunnel is not None and self._tunnel.is_active:
+                self._tunnel.stop()
             raise ConnectionError(
                 "Operational Error while connecting to database: {0}".format(e)
             )
@@ -396,7 +400,7 @@ class MySQLConnector(BaseConnector):
         self.ensure_route_to_database()
         host, port = self._host_port()
         try:
-            database = MySQLDatabaseReconnect(
+            self._database = MySQLDatabaseReconnect(
                 self._db,
                 host=host,
                 port=port,
@@ -406,7 +410,7 @@ class MySQLConnector(BaseConnector):
         except None:
             # TODO More descriptive here.
             raise ConnectionError("Failed to connect to database.")
-        return database
+        return self._database
 
     @property
     def description(self):
@@ -477,14 +481,20 @@ class MySQLConnector(BaseConnector):
         self._tunnel.skip_tunnel_checkup = False
         self._tunnel.check_tunnels()  # This waits for the tunnel to come up
         if not self._tunnel.tunnel_is_up[(_LOCALHOST, self._tunnel_port)]:
-            raise ConnetionError(
+            raise ConnectionError(
                 "An error occurred while setting up the tunnel."
             )
 
-    def __del__(self):
-        # Stop the SSH tunnel
-        if self._tunnel is not None:
+    def close(self):
+        """Close an open connection."""
+        if self._database is not None and not self._database.is_closed():
+            _logger.debug("Closing databse.")
+            self._database.close()
+            self._database = None
+        if self._tunnel is not None and self._tunnel.is_active:
+            _logger.debug("Stopping tunnel.")
             self._tunnel.stop()
+            self._tunnel = None
 
 
 class SqliteConnector(BaseConnector):
@@ -752,3 +762,14 @@ locations or install `chimedb.config`."""
 
     if current_connector is None or current_connector_RW is None:
         raise ConnectionError()
+
+def close():
+    """Close all open database connections."""
+    current_connector = getattr(_threadlocal, "current_connector", None)
+    if current_connector:
+        current_connector.close()
+        _threadlocal.current_connector = None
+    current_connector_RW = getattr(_threadlocal, "current_connector_RW", None)
+    if current_connector_RW:
+        current_connector_RW.close()
+        _threadlocal.current_connector_RW = None
