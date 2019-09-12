@@ -18,6 +18,27 @@ database itself.  Most CHIME users will want to install the
 to automatically configure their connection.  Other configuration methods
 are explained in the `connectdb` documentation.
 
+## Usage
+
+Typically, a connection is created by calling `connect()`:
+```
+import chimedb.core as db
+db.connect()
+```
+
+A connecton can be closed with:
+```
+db.close()
+```
+All uncommitted transactions will be abandoned.  Explicitly closing the database is not usually required: the database will automatically be closed on exit.
+
+### Diagnostics
+You can see which connection the module has made with the database by inspecting the current connector:
+```
+db.connect()
+print(db.connectdb.current_connector().description)
+```
+
 ## Contents
 
 This package contains:
