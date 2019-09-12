@@ -97,12 +97,7 @@ These constants tell the module how to connect to the CHIME database.
 """
 
 # === Start Python 2/3 compatibility
-from __future__ import (
-    absolute_import,
-    division,
-    print_function,
-    unicode_literals,
-)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 # Explicity avoid importing int: sshtunnel requires port numbers
 # be native int objects.
@@ -220,9 +215,7 @@ class RetryOperationalError(object):
 
     def execute_sql(self, sql, params=None, commit=True):
         try:
-            cursor = super(RetryOperationalError, self).execute_sql(
-                sql, params, commit
-            )
+            cursor = super(RetryOperationalError, self).execute_sql(sql, params, commit)
         except pw.OperationalError:
             if not self.is_closed():
                 self.close()
@@ -322,9 +315,7 @@ class BaseConnector(object):
             )
         else:
             ctx = " in {0}".format(context) if context else ""
-            raise ValueError(
-                "Invalid database type ({0})".format(d["db_type"]) + ctx
-            )
+            raise ValueError("Invalid database type ({0})".format(d["db_type"]) + ctx)
 
 
 class MySQLConnector(BaseConnector):
@@ -364,6 +355,8 @@ class MySQLConnector(BaseConnector):
         tunnel_user=None,
         tunnel_identity=None,
     ):
+        self._database = None
+
         self._db = db
         self._user = user
         self._passwd = passwd
@@ -387,6 +380,8 @@ class MySQLConnector(BaseConnector):
                 connect_timeout=1,
             )
         except MySQLdb.OperationalError as e:
+            if self._tunnel is not None and self._tunnel.is_active:
+                self._tunnel.stop()
             raise ConnectionError(
                 "Operational Error while connecting to database: {0}".format(e)
             )
@@ -396,25 +391,19 @@ class MySQLConnector(BaseConnector):
         self.ensure_route_to_database()
         host, port = self._host_port()
         try:
-            database = MySQLDatabaseReconnect(
-                self._db,
-                host=host,
-                port=port,
-                user=self._user,
-                passwd=self._passwd,
+            self._database = MySQLDatabaseReconnect(
+                self._db, host=host, port=port, user=self._user, passwd=self._passwd
             )
         except None:
             # TODO More descriptive here.
             raise ConnectionError("Failed to connect to database.")
-        return database
+        return self._database
 
     @property
     def description(self):
         out = "MySQL database at %s port %d" % (self._host, self._port)
         if self._tunnel_host:
-            out += " tunnelled through {0} to localhost".format(
-                self._tunnel_host
-            )
+            out += " tunnelled through {0} to localhost".format(self._tunnel_host)
             if self._tunnel_port is not None:
                 out += " port {0}".format(self._tunnel_port)
         return out
@@ -477,14 +466,18 @@ class MySQLConnector(BaseConnector):
         self._tunnel.skip_tunnel_checkup = False
         self._tunnel.check_tunnels()  # This waits for the tunnel to come up
         if not self._tunnel.tunnel_is_up[(_LOCALHOST, self._tunnel_port)]:
-            raise ConnetionError(
-                "An error occurred while setting up the tunnel."
-            )
+            raise ConnectionError("An error occurred while setting up the tunnel.")
 
-    def __del__(self):
-        # Stop the SSH tunnel
-        if self._tunnel is not None:
+    def close(self):
+        """Close an open connection."""
+        if self._database is not None and not self._database.is_closed():
+            _logger.debug("Closing databse.")
+            self._database.close()
+            self._database = None
+        if self._tunnel is not None and self._tunnel.is_active:
+            _logger.debug("Stopping tunnel.")
             self._tunnel.stop()
+            self._tunnel = None
 
 
 class SqliteConnector(BaseConnector):
@@ -580,9 +573,7 @@ def create_tunnel(
         )
 
     if not tunnel_active(tunnel_port):
-        msg = (
-            "SSH tunnel to DB inactive: creating one with command %s." % command
-        )
+        msg = "SSH tunnel to DB inactive: creating one with command %s." % command
         _logger.info(msg)
         # print command    # Eventually get rid of this.
         pipe = os.popen(command, "r")
@@ -650,9 +641,7 @@ def _try_rc_files():
                 # Create the connectors
                 for section in sections:
                     if section in rc:
-                        conn[section] = BaseConnector.from_dict(
-                            rc[section], rc_file
-                        )
+                        conn[section] = BaseConnector.from_dict(rc[section], rc_file)
 
                 # It's all or nothing
                 if "connector" in conn:
@@ -665,11 +654,7 @@ File "{0}" defines 'connector' but not 'connector_rw'.""".format(
                             )
                         )
                     else:
-                        return (
-                            [conn["connector"]],
-                            [conn["connector_rw"]],
-                            rc_file,
-                        )
+                        return ([conn["connector"]], [conn["connector_rw"]], rc_file)
                 elif "connector_rw" in conn:
                     raise ConnectionError(
                         """
@@ -752,3 +737,15 @@ locations or install `chimedb.config`."""
 
     if current_connector is None or current_connector_RW is None:
         raise ConnectionError()
+
+
+def close():
+    """Close all open database connections."""
+    current_connector = getattr(_threadlocal, "current_connector", None)
+    if current_connector:
+        current_connector.close()
+        _threadlocal.current_connector = None
+    current_connector_RW = getattr(_threadlocal, "current_connector_RW", None)
+    if current_connector_RW:
+        current_connector_RW.close()
+        _threadlocal.current_connector_RW = None
