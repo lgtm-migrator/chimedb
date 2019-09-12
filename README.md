@@ -65,6 +65,10 @@ Exceptions related to database operations (queries and updates):
 
 ### Functions
 
+* `close()`
+
+  Close all open database connections.
+
 * `connect(read_write=False, reconnect=False)`
 
   Initialise a connection to the database.  All connections are
