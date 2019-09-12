@@ -99,4 +99,4 @@ from .orm import connect_database as connect
 from .orm import database_proxy as proxy
 from .connectdb import close
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
