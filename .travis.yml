@@ -1,0 +1,22 @@
+language: python
+os: linux
+sudo: required
+dist: xenial
+
+python:
+    - 3.6
+notifications:
+    email: false
+
+
+before_install:
+    - pip install black
+    - pip install future
+    - pip install pytest
+    -
+install:
+    - pip install .
+
+script:
+    # Run black on all .py files in all subfolders
+    - black --check .
