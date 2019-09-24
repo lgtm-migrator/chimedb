@@ -62,6 +62,8 @@ class JSONDictField(pw.TextField):
     In theory MySQL has a native JSON field, but peewee does not support it.
     """
 
+    field_type = "LONGTEXT"
+
     def db_value(self, value):
         """Serialize the python values for storage in the db."""
 

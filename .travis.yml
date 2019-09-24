@@ -13,7 +13,7 @@ before_install:
     - pip install black
     - pip install future
     - pip install pytest
-    -
+
 install:
     - pip install .
 
