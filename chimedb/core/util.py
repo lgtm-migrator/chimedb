@@ -1,5 +1,6 @@
 import logging
 
+
 from .orm import base_model, name_table
 
 # Routines for setting up the database
