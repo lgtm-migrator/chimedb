@@ -14,6 +14,26 @@ models for the tables in the database.  Packages which define tables include:
     for dataset tables updated by comet
 * [ch_util](https://bitbucket.org/chime/ch_util): for all other tables
 
+## Installing
+
+TL;DR: use `pip` to install `chimedb` packages, _not_ `python setup.py`.
+
+This package uses [pkgutil](https://docs.python.org/library/pkgutil.html) to allow
+multiple `chimedb` submodules to be distributed in separate repositories.  In
+Python-2 running `python setup.py install` will _not_ install these packages correctly.
+
+If you have a checked-out copy of a `chimedb` repository use `pip` to install the package
+properly:
+```
+    pip install .
+```
+
+Assuming you've set up your SSH keys properly, you can also install this package directly
+from GitHub without having to check it out first:
+```
+    pip install git+ssh://git@github.com/chime-experiment/chimedb.git
+```
+
 ## Connecting to the Database
 
 This package contains no configuration information for connecting to the
