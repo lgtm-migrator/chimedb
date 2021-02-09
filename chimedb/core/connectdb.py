@@ -448,15 +448,19 @@ class MySQLConnector(BaseConnector):
         return connection
 
     def get_peewee_database(self):
+        # This will set self._database to None if a new tunnel is established
+        # (possibly because the old one died)
         self.ensure_route_to_database()
-        host, port = self._host_port()
-        try:
-            self._database = MySQLDatabaseReconnect(
-                self._db, host=host, port=port, user=self._user, passwd=self._passwd
-            )
-        except None:
-            # TODO More descriptive here.
-            raise ConnectionError("Failed to connect to database.")
+
+        if self._database is None or not self._database.is_connection_usable():
+            host, port = self._host_port()
+            try:
+                self._database = MySQLDatabaseReconnect(
+                    self._db, host=host, port=port, user=self._user, passwd=self._passwd
+                )
+            except None:
+                # TODO More descriptive here.
+                raise ConnectionError("Failed to connect to database.")
         return self._database
 
     @property
@@ -484,6 +488,10 @@ class MySQLConnector(BaseConnector):
 
         if not connect_this_rank():
             return
+
+        # Abandon an existing database connection: if the tunnel isn't
+        # active, presumably the connection isn't working
+        self._database = None
 
         _logger.debug(
             "Attempting SSH tunnel to {0}:{1} through {2}".format(
@@ -573,9 +581,10 @@ class SqliteConnector(BaseConnector):
         return connection
 
     def get_peewee_database(self):
-        self._database = pw.SqliteDatabase(
-            self._db, uri=True if self._db.startswith("file:") else False
-        )
+        if self._database is None or not self._database.is_connection_usable():
+            self._database = pw.SqliteDatabase(
+                self._db, uri=True if self._db.startswith("file:") else False
+            )
         return self._database
 
     def close(self):
@@ -754,7 +763,9 @@ def connect(reconnect=False):
             connectors, connectors_rw, context = rc_data
         elif _TEST_ENABLE:
             # Make an in-memory sqlite database
-            connectors = [SqliteConnector("file::memory:?cache=shared&mode=ro")]
+            connectors = [
+                SqliteConnector("file::memory:?cache=shared", read_write=False)
+            ]
             connectors_rw = [SqliteConnector("file::memory:?cache=shared")]
             context = "_TEST_ENABLE"
         else:
