@@ -1,3 +1,23 @@
+# [0.5.0] - (2021-02-08)
+
+
+### Bug Fixes
+
+* **connectdb:** e-use existing DB connection ([#21](https://github.com/chime-experiment/chimedb/pull/21); [c1b60c9](https://github.com/chime-experiment/chimedb/commit/c1b60c90efce7051bab78935336a14d09ca07208))
+
+
+### Features
+* **connectdb:** be more descriptive in debug log about connection failures ([#19](https://github.com/chime-experiment/chimedb/pull/19); [6fca83b](https://github.com/chime-experiment/chimedb/commit/6fca83bc9e3e082bbdab84bbdae1ece10881cb5b))
+* **orm:** add MediaWikiUser model ([#17](https://github.com/chime-experiment/chimedb/pull/17); [9adb6de](https://github.com/chime-experiment/chimedb/commit/9adb6de7404c616c746463155e0a8e03b5a9135a))
+* **create_tables:** support creating tables for model subclasses ([#16](https://github.com/chime-experiment/chimedb/pull/16); [4c300d6](https://github.com/chime-experiment/chimedb/commit/4c300d642fc215fe3ac32fdba539f24202a39028))
+
+
+### Documentation Changes
+
+* chimedb is public and should be installed via https ([#20](https://github.com/chime-experiment/chimedb/pull/20); [e61554f](https://github.com/chime-experiment/chimedb/commit/e61554faad77affd83eefdecab087d6da2e28655))
+
+
+
 # [0.4.1] - (2020-05-04)
 
 
